@@ -1,0 +1,46 @@
+import sqlalchemy as sq
+from sqlalchemy.orm import declarative_base, relationship
+
+Base = declarative_base()
+
+
+class RussianWord(Base):
+    __tablename__ = 'russianword'
+
+    id = sq.Column(sq.Integer, primary_key=True)
+    word = sq.Column(sq.Text, nullable=False, unique=True)
+
+    def __str__(self):
+        return f'RussianWord {self.id}: {self.word}'
+
+
+class EnglishWord(Base):
+    __tablename__ = 'englishword'
+
+    id = sq.Column(sq.Integer, primary_key=True)
+    word = sq.Column(sq.Text, nullable=False)
+    id_russian = sq.Column(sq.Integer, sq.ForeignKey('russianword.id'), nullable=False)
+    russianword = relationship(RussianWord, backref='english_words')
+
+    def __str__(self):
+        return f'EnglishWord {self.id}: {self.word} -> {self.id_russian}'
+
+
+class Visibility(Base):
+    __tablename__ = 'visibility'
+
+    id = sq.Column(sq.Integer, primary_key=True)
+    chatid = sq.Column(sq.Integer, nullable=False)
+    id_russian = sq.Column(sq.Integer, sq.ForeignKey('russianword.id'), nullable=False)
+    russianword = relationship(RussianWord, backref='visibility')
+
+    def __str__(self):
+        return f'Visibility {self.id}: ChatID {self.chatid} -> RussianWordID {self.id_russian}'
+
+
+def create_tables(engine):
+    Base.metadata.create_all(engine)
+
+
+def drop_tables(engine):
+    Base.metadata.drop_all(engine)
