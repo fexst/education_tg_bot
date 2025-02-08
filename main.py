@@ -15,45 +15,11 @@ token_tg = config.get("TOKEN", "TOKEN")
 
 bot = telebot.TeleBot(token_tg)
 
-
-def load_words():
-    with open('data_word.json', 'r', encoding='utf-8') as f:
-        data = json.load(f)
-
-    for rus, eng in data.items():
-        russian_word = session.query(RussianWord).filter_by(word=rus).first()
-        if not russian_word:
-            russian_word = RussianWord(word=rus)
-            session.add(russian_word)
-            session.flush()
-
-        english_word = EnglishWord(word=eng, id_russian=russian_word.id)
-        session.add(english_word)
-
-    session.commit()
-
-
-def add_visibility(chat_id):
-    all_russian_words = session.query(RussianWord).all()
-    existing_word_ids = {
-        v.id_russian for v in session.query(Visibility).filter_by(chatid=chat_id).all()
-    }
-    new_entries = [
-        Visibility(chatid=chat_id, id_russian=word.id)
-        for word in all_russian_words if word.id not in existing_word_ids
-    ]
-
-    if new_entries:
-        session.add_all(new_entries)
-        session.commit()
-
-
-DSN = "postgresql://postgres:postgres!@localhost:5432/nameproject"
+DSN = "postgresql://postgres:password@localhost:5432/name_bd
 engine = create_engine(DSN)
 create_tables(engine)
 Session = sessionmaker(bind=engine)
 session = Session()
-load_words()
 
 
 def get_random_question(chat_id):
@@ -93,6 +59,15 @@ def start(message):
     with open('data_word.json', 'r', encoding='utf-8') as f:
         data = json.load(f)
 
+    for rus, eng in data.items():
+        russian_word = session.query(RussianWord).filter_by(word=rus).first()
+        if not russian_word:
+            russian_word = RussianWord(word=rus)
+            session.add(russian_word)
+            session.flush()
+
+        english_word = EnglishWord(word=eng, id_russian=russian_word.id)
+        session.add(english_word)
     loaded_word_ids = []
     for rus, eng in data.items():
         russian_word = session.query(RussianWord).filter_by(word=rus).first()
@@ -164,7 +139,7 @@ def process_add_word(message, chat_id):
     russian = message.text.strip()
     rus_entry = session.query(RussianWord).filter_by(word=russian).first()
     if not rus_entry:
-        rus_entry = RussianWord(word=russian)
+        rus_entry = RussianWord(word=russian.lower())
         session.add(rus_entry)
         session.flush()
 
@@ -174,9 +149,9 @@ def process_add_word(message, chat_id):
 
 def process_add_translation(message, chat_id, rus_id):
     english = message.text.strip()
-    eng_entry = EnglishWord(word=english, id_russian=rus_id)
+    eng_entry = EnglishWord(word=english.lower(), id_russian=rus_id)
     session.add(eng_entry)
-    session.add(Visibility(chatid=chat_id, id_russian=rus_id))
+    session.add(Visibility(chatid=chat_id, id_russian=rus_id, user_add=chat_id))
     session.commit()
     bot.send_message(chat_id, "✅ Слово добавлено!")
     ask_question(chat_id)
@@ -192,7 +167,8 @@ def process_remove_word(message, chat_id):
     russian = message.text.strip()
     rus_entry = session.query(RussianWord).filter_by(word=russian).first()
     if rus_entry:
-        visibility_entry = session.query(Visibility).filter_by(chatid=chat_id, id_russian=rus_entry.id).first()
+        visibility_entry = session.query(Visibility).filter_by(chatid=chat_id, id_russian=rus_entry.id,
+                                                               user_add=chat_id).first()
         if visibility_entry:
             session.delete(visibility_entry)
             session.commit()
