@@ -31,6 +31,7 @@ class Visibility(Base):
 
     id = sq.Column(sq.Integer, primary_key=True)
     chatid = sq.Column(sq.Integer, nullable=False)
+    user_add = sq.Column(sq.Integer, nullable=True)
     id_russian = sq.Column(sq.Integer, sq.ForeignKey('russianword.id'), nullable=False)
     russianword = relationship(RussianWord, backref='visibility')
 
